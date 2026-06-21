@@ -1,0 +1,85 @@
+#' Download spatial data of Brazilian municipalities
+#'
+#' @description
+#' Brazilian municipalities
+#'
+#' @template year
+#' @template code_muni
+#' @template simplified
+#' @template output
+#' @template showProgress
+#' @template cache
+#' @template verbose
+#' @param keep_areas_operacionais Logic. Whether the function should keep the
+#'        polygons of Lagoas dos Patos and Lagoa Mirim in the State of Rio Grande
+#'        do Sul (considered as areas estaduais operacionais). Defaults to `FALSE`.
+#'
+#' @return An `"sf" "data.frame"` OR an `ArrowObject`
+#'
+#' @export
+#'
+#' @examplesIf identical(tolower(Sys.getenv("NOT_CRAN")), "true")
+#' # Read specific municipality at a given year
+#' mun <- read_municipality(code_muni = 1200179, year = 2017)
+#'
+#' # Read all municipalities of a state at a given year
+#' mun <- read_municipality(code_muni = 33, year = 2010)
+#' mun <- read_municipality(code_muni = "RJ", year = 2010)
+#'
+#' # Read all municipalities of the country at a given year
+#' mun <- read_municipality(code_muni = "all", year = 2018)
+#'
+read_municipality <- function(year,
+                              code_muni = "all",
+                              simplified = TRUE,
+                              output = "sf",
+                              showProgress = TRUE,
+                              cache = TRUE,
+                              verbose = TRUE,
+                              keep_areas_operacionais = FALSE) {
+
+  # check input
+  if (!is.logical(keep_areas_operacionais)) { stop("'keep_areas_operacionais' must be of type 'logical'") }
+
+
+  # Get metadata with data url addresses
+  temp_meta <- select_metadata(
+    geography="municipalities",
+    year = year,
+    simplified = simplified,
+    verbose = verbose
+  )
+
+  # check if metadata download failed
+  if (is.null(temp_meta)) { return(invisible(NULL)) }
+
+  # download files
+  temp_arrw <- download_parquet(
+    filename_to_download = temp_meta$file_name,
+    showProgress,
+    cache
+  )
+
+  # check if download failed
+  if (is.null(temp_arrw)) { return(invisible(NULL)) }
+
+  # FILTER
+  temp_arrw <- filter_arrw(temp_arrw, code = code_muni)
+
+  # keep_areas_operacionais
+  if (isFALSE(keep_areas_operacionais)) {
+    temp_arrw <- temp_arrw |>
+      dplyr::filter(code_muni != 4300001) |>
+      dplyr::filter(code_muni != 4300002) |>
+      dplyr::compute()
+    }
+
+  # convert to sf
+  output <- convert_output(temp_arrw, output)
+
+  return(output)
+
+}
+
+
+

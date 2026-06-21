@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>geoBR Explorer — Dados Geoespaciais do Brasil</title>
+  <meta name="description" content="Interface para explorar e baixar dados geoespaciais do Brasil usando o pacote geobr. Municípios, estados, biomas, setores censitários e muito mais." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="20" cy="20" r="18" fill="url(#logoGrad)" opacity="0.9"/>
+            <path d="M10 22 Q15 12 20 18 Q25 24 30 14" stroke="white" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+            <circle cx="20" cy="18" r="2.5" fill="white"/>
+            <defs>
+              <linearGradient id="logoGrad" x1="0" y1="0" x2="40" y2="40">
+                <stop offset="0%" stop-color="#22d3ee"/>
+                <stop offset="100%" stop-color="#6366f1"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <span class="logo-name">geo<strong>BR</strong></span>
+          <span class="logo-tagline">Explorer</span>
+        </div>
+      </div>
+      <button class="sidebar-toggle" id="sidebarToggle" title="Fechar menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Dados Geográficos</div>
+      <button class="nav-item active" data-panel="quick-query">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Quick Query
+      </button>
+      <button class="nav-item" data-panel="administrative">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+        Divisões Admin.
+      </button>
+      <button class="nav-item" data-panel="environment">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 8C8 10 5.9 16.17 3.82 19.5a1 1 0 001.7 1.05 10 10 0 011.69-1.29c2.08-1.14 4.75-1.51 9.79 1.24"/><path d="M17 8a10.73 10.73 0 010 12"/><path d="M8.59 3.64C9.75 4.5 11.17 5 12.69 5c3.07 0 5.63-2.17 5.85-5"/></svg>
+        Meio Ambiente
+      </button>
+      <button class="nav-item" data-panel="census">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Censo &amp; Setores
+      </button>
+      <button class="nav-item" data-panel="health">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        Saúde &amp; Educação
+      </button>
+      <button class="nav-item" data-panel="urban">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="22" x2="12" y2="11"/><path d="M5 22V8l7-6 7 6v14"/><path d="M9 22V12h6v10"/></svg>
+        Áreas Urbanas
+      </button>
+
+      <div class="nav-divider"></div>
+      <div class="nav-section-label">Banco Local</div>
+      <button class="nav-item" data-panel="local-db">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        Banco de Dados Local
+        <span class="badge badge-new">NOVO</span>
+      </button>
+
+      <div class="nav-divider"></div>
+      <div class="nav-section-label">Utilitários</div>
+      <button class="nav-item" data-panel="list">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        Listar Datasets
+      </button>
+      <button class="nav-item" data-panel="code-gen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        Gerador de Código
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="version-badge">geobr v2.0.0</div>
+      <a href="https://github.com/ipeaGIT/geobr" target="_blank" class="gh-link">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        GitHub
+      </a>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <div class="main-wrapper">
+    <header class="topbar">
+      <button class="hamburger" id="hamburger" title="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="topbar-title" id="topbarTitle">Quick Query</div>
+      <div class="topbar-actions">
+        <button class="btn-icon" id="langToggle" title="Alternar idioma do código">
+          <span id="langLabel">Python</span>
+        </button>
+        <a href="https://ipeagit.github.io/geobr/" target="_blank" class="btn-icon" title="Documentação">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Docs
+        </a>
+      </div>
+    </header>
+
+    <main class="content">
+
+      <!-- ════ PANEL: Quick Query ════ -->
+      <section class="panel active" id="panel-quick-query">
+        <div class="panel-header">
+          <h1>Quick Query</h1>
+          <p class="panel-desc">Selecione um dataset, configure os filtros e gere o código de uma linha.</p>
+        </div>
+
+        <div class="query-grid">
+          <!-- Dataset select -->
+          <div class="form-group full-width">
+            <label class="form-label">Dataset</label>
+            <div class="select-wrapper">
+              <select id="qq-dataset" class="form-select">
+                <optgroup label="🏛 Divisões Administrativas">
+                  <option value="country">País (Brasil)</option>
+                  <option value="region">Regiões (N, NE, CO, SE, S)</option>
+                  <option value="state" selected>Estados</option>
+                  <option value="municipality">Municípios</option>
+                  <option value="meso_region">Mesorregiões</option>
+                  <option value="micro_region">Microrregiões</option>
+                  <option value="intermediate_region">Regiões Intermediárias</option>
+                  <option value="immediate_region">Regiões Imediatas</option>
+                </optgroup>
+                <optgroup label="🌿 Meio Ambiente">
+                  <option value="biomes">Biomas</option>
+                  <option value="amazon">Amazônia Legal</option>
+                  <option value="semiarid">Semiárido</option>
+                  <option value="conservation_units">Unidades de Conservação</option>
+                  <option value="indigenous_land">Terras Indígenas</option>
+                  <option value="disaster_risk_area">Áreas de Risco de Desastre</option>
+                </optgroup>
+                <optgroup label="📊 Censo &amp; Estatísticas">
+                  <option value="census_tract">Setores Censitários</option>
+                  <option value="weighting_area">Áreas de Ponderação</option>
+                  <option value="statistical_grid">Grade Estatística</option>
+                  <option value="comparable_areas">Áreas Comparáveis</option>
+                </optgroup>
+                <optgroup label="🏥 Saúde &amp; Educação">
+                  <option value="health_region">Regiões de Saúde</option>
+                  <option value="health_facilities">Unidades de Saúde</option>
+                  <option value="schools">Escolas</option>
+                </optgroup>
+                <optgroup label="🏙 Urbano">
+                  <option value="urban_area">Áreas Urbanas</option>
+                  <option value="urban_concentrations">Concentrações Urbanas</option>
+                  <option value="metro_area">Regiões Metropolitanas</option>
+                  <option value="municipal_seat">Sedes Municipais</option>
+                  <option value="neighborhood">Bairros</option>
+                  <option value="pop_arrangements">Arranjos Populacionais</option>
+                </optgroup>
+              </select>
+              <span class="select-arrow">▾</span>
+            </div>
+          </div>
+
+          <!-- Year -->
+          <div class="form-group" id="qq-year-group">
+            <label class="form-label">Ano</label>
+            <div class="select-wrapper">
+              <select id="qq-year" class="form-select">
+                <option value="2022">2022</option>
+                <option value="2020">2020</option>
+                <option value="2019">2019</option>
+                <option value="2017">2017</option>
+                <option value="2016">2016</option>
+                <option value="2015">2015</option>
+                <option value="2014">2014</option>
+                <option value="2013">2013</option>
+                <option value="2010">2010</option>
+                <option value="2007">2007</option>
+                <option value="2005">2005</option>
+                <option value="2001">2001</option>
+                <option value="2000">2000</option>
+              </select>
+              <span class="select-arrow">▾</span>
+            </div>
+          </div>
+
+          <!-- Code filter -->
+          <div class="form-group" id="qq-code-group">
+            <label class="form-label">Filtro de Código <span class="optional">(opcional)</span></label>
+            <input type="text" id="qq-code" class="form-input" placeholder="ex: SP, RJ, all, 3550308" />
+            <span class="form-hint" id="qq-code-hint">Sigla do estado, código numérico, ou "all"</span>
+          </div>
+
+          <!-- Zone (census_tract only) -->
+          <div class="form-group hidden" id="qq-zone-group">
+            <label class="form-label">Zona</label>
+            <div class="select-wrapper">
+              <select id="qq-zone" class="form-select">
+                <option value="urban">Urbana</option>
+                <option value="rural">Rural</option>
+              </select>
+              <span class="select-arrow">▾</span>
+            </div>
+          </div>
+
+          <!-- Simplified toggle -->
+          <div class="form-group">
+            <label class="form-label">Geometria</label>
+            <div class="toggle-group">
+              <button class="toggle-btn active" id="qq-simplified-true">Simplificada</button>
+              <button class="toggle-btn" id="qq-simplified-false">Original</button>
+            </div>
+            <span class="form-hint">Simplificada é menor e mais rápida</span>
+          </div>
+
+          <!-- Output format -->
+          <div class="form-group">
+            <label class="form-label">Formato de saída</label>
+            <div class="select-wrapper">
+              <select id="qq-output" class="form-select">
+                <option value="gpd">GeoPandas (gpd)</option>
+                <option value="arrow">Arrow Table</option>
+              </select>
+              <span class="select-arrow">▾</span>
+            </div>
+          </div>
+
+          <!-- Options row -->
+          <div class="form-group full-width">
+            <label class="form-label">Opções</label>
+            <div class="checkbox-row">
+              <label class="checkbox-label"><input type="checkbox" id="qq-cache" checked /> Cache local</label>
+              <label class="checkbox-label"><input type="checkbox" id="qq-progress" checked /> Mostrar progresso</label>
+              <label class="checkbox-label"><input type="checkbox" id="qq-verbose" /> Modo verboso</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Code output -->
+        <div class="code-card">
+          <div class="code-card-header">
+            <div class="code-lang-tabs">
+              <button class="lang-tab active" data-lang="python">Python</button>
+              <button class="lang-tab" data-lang="r">R</button>
+            </div>
+            <div class="code-actions">
+              <button class="btn-copy" id="qq-copy-btn" title="Copiar código">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copiar
+              </button>
+            </div>
+          </div>
+          <pre class="code-block" id="qq-code-preview"><code id="qq-code-content"></code></pre>
+        </div>
+
+        <div class="run-bar">
+          <div class="run-info">
+            <span class="run-dataset-label" id="qq-dataset-label">estados</span>
+            <span class="run-size-hint">~2 MB estimado</span>
+          </div>
+          <button class="btn-run" id="qq-run-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5,3 19,12 5,21"/></svg>
+            Executar Query
+          </button>
+        </div>
+      </section>
+
+      <!-- ════ PANEL: Administrative ════ -->
+      <section class="panel" id="panel-administrative">
+        <div class="panel-header">
+          <h1>Divisões Administrativas</h1>
+          <p class="panel-desc">Acesso direto a todas as divisões político-administrativas do Brasil.</p>
+        </div>
+        <div class="dataset-grid">
+          <div class="dataset-card" data-func="read_country" data-params='{"year":true,"code":false}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#22d3ee,#0891b2)">🌎</div>
+            <div class="dataset-card-body">
+              <h3>País</h3>
+              <p>Contorno do Brasil inteiro</p>
+              <div class="dataset-tags"><span class="tag">read_country()</span><span class="tag">1960–2020</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_region" data-params='{"year":true,"code":false}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#818cf8,#6366f1)">🗺</div>
+            <div class="dataset-card-body">
+              <h3>Regiões</h3>
+              <p>5 grandes regiões do IBGE</p>
+              <div class="dataset-tags"><span class="tag">read_region()</span><span class="tag">1960–2020</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_state" data-params='{"year":true,"code":"state"}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#34d399,#059669)">🏛</div>
+            <div class="dataset-card-body">
+              <h3>Estados</h3>
+              <p>27 Unidades Federativas</p>
+              <div class="dataset-tags"><span class="tag">read_state()</span><span class="tag">1960–2020</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_municipality" data-params='{"year":true,"code":"muni"}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#fb923c,#ea580c)">🏘</div>
+            <div class="dataset-card-body">
+              <h3>Municípios</h3>
+              <p>5.570 municípios brasileiros</p>
+              <div class="dataset-tags"><span class="tag">read_municipality()</span><span class="tag">1872–2022</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_meso_region" data-params='{"year":true,"code":"state"}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#f472b6,#db2777)">📍</div>
+            <div class="dataset-card-body">
+              <h3>Mesorregiões</h3>
+              <p>137 mesorregiões do IBGE</p>
+              <div class="dataset-tags"><span class="tag">read_meso_region()</span><span class="tag">2000–2019</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_micro_region" data-params='{"year":true,"code":"state"}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#a78bfa,#7c3aed)">📌</div>
+            <div class="dataset-card-body">
+              <h3>Microrregiões</h3>
+              <p>558 microrregiões do IBGE</p>
+              <div class="dataset-tags"><span class="tag">read_micro_region()</span><span class="tag">2000–2019</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_intermediate_region" data-params='{"year":true,"code":"state"}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#67e8f9,#0e7490)">🔵</div>
+            <div class="dataset-card-body">
+              <h3>Regiões Intermediárias</h3>
+              <p>Divisão Regional 2017</p>
+              <div class="dataset-tags"><span class="tag">read_intermediate_region()</span><span class="tag">2017–2019</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_immediate_region" data-params='{"year":true,"code":"state"}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#86efac,#16a34a)">🟢</div>
+            <div class="dataset-card-body">
+              <h3>Regiões Imediatas</h3>
+              <p>Divisão Regional 2017</p>
+              <div class="dataset-tags"><span class="tag">read_immediate_region()</span><span class="tag">2017–2019</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════ PANEL: Environment ════ -->
+      <section class="panel" id="panel-environment">
+        <div class="panel-header">
+          <h1>Meio Ambiente</h1>
+          <p class="panel-desc">Biomas, unidades de conservação, terras indígenas e áreas de risco.</p>
+        </div>
+        <div class="dataset-grid">
+          <div class="dataset-card" data-func="read_biomes" data-params='{"year":true,"code":false}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#4ade80,#15803d)">🌿</div>
+            <div class="dataset-card-body">
+              <h3>Biomas</h3>
+              <p>Amazônia, Cerrado, Mata Atlântica…</p>
+              <div class="dataset-tags"><span class="tag">read_biomes()</span><span class="tag">2004–2019</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_amazon" data-params='{"year":true,"code":false}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#34d399,#065f46)">🌳</div>
+            <div class="dataset-card-body">
+              <h3>Amazônia Legal</h3>
+              <p>Área oficial da Amazônia Legal</p>
+              <div class="dataset-tags"><span class="tag">read_amazon()</span><span class="tag">2012</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_semiarid" data-params='{"year":true,"code":false}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#fcd34d,#d97706)">🏜</div>
+            <div class="dataset-card-body">
+              <h3>Semiárido</h3>
+              <p>Região semiárida oficial</p>
+              <div class="dataset-tags"><span class="tag">read_semiarid()</span><span class="tag">2017</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_conservation_units" data-params='{"year":true,"code":false}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#6ee7b7,#047857)">🛡</div>
+            <div class="dataset-card-body">
+              <h3>Unidades de Conservação</h3>
+              <p>UCs federais, estaduais e municipais</p>
+              <div class="dataset-tags"><span class="tag">read_conservation_units()</span><span class="tag">2010–2019</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_indigenous_land" data-params='{"year":true,"code":false}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#fca5a5,#dc2626)">🪶</div>
+            <div class="dataset-card-body">
+              <h3>Terras Indígenas</h3>
+              <p>Terras demarcadas pela FUNAI</p>
+              <div class="dataset-tags"><span class="tag">read_indigenous_land()</span><span class="tag">2010–2019</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_disaster_risk_area" data-params='{"year":true,"code":"state"}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#f97316,#9a3412)">⚠️</div>
+            <div class="dataset-card-body">
+              <h3>Áreas de Risco</h3>
+              <p>Zonas de risco de desastre natural</p>
+              <div class="dataset-tags"><span class="tag">read_disaster_risk_area()</span><span class="tag">2010</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════ PANEL: Census ════ -->
+      <section class="panel" id="panel-census">
+        <div class="panel-header">
+          <h1>Censo &amp; Setores Censitários</h1>
+          <p class="panel-desc">Malhas do IBGE para análise demográfica e estatística.</p>
+        </div>
+        <div class="dataset-grid">
+          <div class="dataset-card" data-func="read_census_tract" data-params='{"year":true,"code":"tract","zone":true}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#818cf8,#4338ca)">🔲</div>
+            <div class="dataset-card-body">
+              <h3>Setores Censitários</h3>
+              <p>Malha de setores do Censo</p>
+              <div class="dataset-tags"><span class="tag">read_census_tract()</span><span class="tag">2000–2022</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_weighting_area" data-params='{"year":true,"code":"state"}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#c4b5fd,#6d28d9)">⚖️</div>
+            <div class="dataset-card-body">
+              <h3>Áreas de Ponderação</h3>
+              <p>Malha de ponderação do Censo</p>
+              <div class="dataset-tags"><span class="tag">read_weighting_area()</span><span class="tag">2010</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_statistical_grid" data-params='{"year":true,"code":false}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#93c5fd,#1d4ed8)">🗃</div>
+            <div class="dataset-card-body">
+              <h3>Grade Estatística</h3>
+              <p>Grid de 200×200m do IBGE</p>
+              <div class="dataset-tags"><span class="tag">read_statistical_grid()</span><span class="tag">2010</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_comparable_areas" data-params='{"year":false,"code":false}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#e879f9,#a21caf)">📐</div>
+            <div class="dataset-card-body">
+              <h3>Áreas Comparáveis</h3>
+              <p>Malhas censitárias comparáveis entre anos</p>
+              <div class="dataset-tags"><span class="tag">read_comparable_areas()</span><span class="tag">1872–2010</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════ PANEL: Health ════ -->
+      <section class="panel" id="panel-health">
+        <div class="panel-header">
+          <h1>Saúde &amp; Educação</h1>
+          <p class="panel-desc">Estabelecimentos de saúde, regiões de saúde e escolas.</p>
+        </div>
+        <div class="dataset-grid">
+          <div class="dataset-card" data-func="read_health_region" data-params='{"year":true,"code":"state"}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#f43f5e,#be123c)">❤️</div>
+            <div class="dataset-card-body">
+              <h3>Regiões de Saúde</h3>
+              <p>Divisão regional do SUS</p>
+              <div class="dataset-tags"><span class="tag">read_health_region()</span><span class="tag">2013</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_health_facilities" data-params='{"year":true,"code":"state"}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#fb7185,#9f1239)">🏥</div>
+            <div class="dataset-card-body">
+              <h3>Unidades de Saúde</h3>
+              <p>Hospitais, UBSs e postos de saúde</p>
+              <div class="dataset-tags"><span class="tag">read_health_facilities()</span><span class="tag">2015</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_schools" data-params='{"year":true,"code":"state"}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#fbbf24,#b45309)">🏫</div>
+            <div class="dataset-card-body">
+              <h3>Escolas</h3>
+              <p>Estabelecimentos de ensino</p>
+              <div class="dataset-tags"><span class="tag">read_schools()</span><span class="tag">2020</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════ PANEL: Urban ════ -->
+      <section class="panel" id="panel-urban">
+        <div class="panel-header">
+          <h1>Áreas Urbanas</h1>
+          <p class="panel-desc">Malhas urbanas, regiões metropolitanas e arranjos populacionais.</p>
+        </div>
+        <div class="dataset-grid">
+          <div class="dataset-card" data-func="read_urban_area" data-params='{"year":true,"code":false}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#38bdf8,#0284c7)">🏙</div>
+            <div class="dataset-card-body">
+              <h3>Áreas Urbanas</h3>
+              <p>Perímetros urbanos do IBGE</p>
+              <div class="dataset-tags"><span class="tag">read_urban_area()</span><span class="tag">2005–2015</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_urban_concentrations" data-params='{"year":true,"code":false}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#7dd3fc,#0369a1)">🌆</div>
+            <div class="dataset-card-body">
+              <h3>Concentrações Urbanas</h3>
+              <p>Aglomerações urbanas classificadas</p>
+              <div class="dataset-tags"><span class="tag">read_urban_concentrations()</span><span class="tag">2015</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_metro_area" data-params='{"year":true,"code":"state"}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#a5b4fc,#4f46e5)">🌇</div>
+            <div class="dataset-card-body">
+              <h3>Regiões Metropolitanas</h3>
+              <p>RMs e APs oficiais</p>
+              <div class="dataset-tags"><span class="tag">read_metro_area()</span><span class="tag">2010–2018</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_municipal_seat" data-params='{"year":true,"code":false}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#fdba74,#c2410c)">📍</div>
+            <div class="dataset-card-body">
+              <h3>Sedes Municipais</h3>
+              <p>Localização das sedes de município</p>
+              <div class="dataset-tags"><span class="tag">read_municipal_seat()</span><span class="tag">2010</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_neighborhood" data-params='{"year":true,"code":"state"}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#6ee7b7,#0f766e)">🏠</div>
+            <div class="dataset-card-body">
+              <h3>Bairros</h3>
+              <p>Limites de bairros por município</p>
+              <div class="dataset-tags"><span class="tag">read_neighborhood()</span><span class="tag">2010</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+          <div class="dataset-card" data-func="read_pop_arrangements" data-params='{"year":true,"code":false}'>
+            <div class="dataset-card-icon" style="background: linear-gradient(135deg,#e9d5ff,#7c3aed)">👥</div>
+            <div class="dataset-card-body">
+              <h3>Arranjos Populacionais</h3>
+              <p>Classificação de arranjos do IBGE</p>
+              <div class="dataset-tags"><span class="tag">read_pop_arrangements()</span><span class="tag">2015</span></div>
+            </div>
+            <button class="dataset-card-btn">Configurar</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════ PANEL: Local DB ════ -->
+      <section class="panel" id="panel-local-db">
+        <div class="panel-header">
+          <h1>Banco de Dados Local</h1>
+          <p class="panel-desc">Configure um diretório com arquivos Parquet locais para evitar downloads repetidos.</p>
+        </div>
+
+        <div class="local-db-status" id="ldb-status-bar">
+          <div class="status-dot inactive" id="ldb-status-dot"></div>
+          <span id="ldb-status-text">Nenhum banco local configurado</span>
+        </div>
+
+        <div class="local-db-grid">
+          <!-- Set -->
+          <div class="ldb-card">
+            <div class="ldb-card-header">
+              <div class="ldb-card-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+              </div>
+              <h3>Configurar Diretório</h3>
+            </div>
+            <p class="ldb-card-desc">Aponte para um diretório contendo arquivos Parquet do geobr.</p>
+            <div class="form-group">
+              <input type="text" id="ldb-path-input" class="form-input" placeholder="/caminho/para/seus/parquets/" />
+            </div>
+            <div class="code-card compact">
+              <div class="code-card-header"><span class="code-lang-label" id="ldb-lang-py">Python</span></div>
+              <pre class="code-block"><code id="ldb-set-code">import geobr
+geobr.set_local_db("/caminho/para/seus/parquets/")</code></pre>
+            </div>
+            <div class="code-card compact">
+              <div class="code-card-header"><span class="code-lang-label">R</span></div>
+              <pre class="code-block"><code>library(geobr)
+set_local_db("/caminho/para/seus/parquets/")</code></pre>
+            </div>
+          </div>
+
+          <!-- Get / Clear -->
+          <div class="ldb-card">
+            <div class="ldb-card-header">
+              <div class="ldb-card-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+              </div>
+              <h3>Consultar &amp; Limpar</h3>
+            </div>
+            <p class="ldb-card-desc">Verifique o banco atual ou remova a configuração para voltar a usar a rede.</p>
+            <div class="code-card compact">
+              <div class="code-card-header"><span class="code-lang-label">Python</span></div>
+              <pre class="code-block"><code># Consultar caminho atual
+geobr.get_local_db()
+
+# Remover configuração
+geobr.clear_local_db()</code></pre>
+            </div>
+            <div class="code-card compact">
+              <div class="code-card-header"><span class="code-lang-label">R</span></div>
+              <pre class="code-block"><code># Consultar caminho atual
+get_local_db()
+
+# Remover configuração
+clear_local_db()</code></pre>
+            </div>
+          </div>
+
+          <!-- List -->
+          <div class="ldb-card full-width">
+            <div class="ldb-card-header">
+              <div class="ldb-card-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg>
+              </div>
+              <h3>Listar Datasets Locais</h3>
+            </div>
+            <p class="ldb-card-desc">Lista todos os arquivos Parquet reconhecidos no diretório configurado.</p>
+
+            <div class="naming-convention">
+              <h4>📋 Convenção de nomes</h4>
+              <div class="naming-examples">
+                <div class="naming-row">
+                  <code>municipalities_2022_simplified.parquet</code>
+                  <span class="naming-desc">→ simplified=True, year=2022</span>
+                </div>
+                <div class="naming-row">
+                  <code>states_2020_original.parquet</code>
+                  <span class="naming-desc">→ simplified=False, year=2020</span>
+                </div>
+                <div class="naming-row">
+                  <code>biomes_2019_simplified.parquet</code>
+                  <span class="naming-desc">→ Biomas 2019 simplificado</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="code-card compact">
+              <div class="code-card-header"><span class="code-lang-label">Python</span></div>
+              <pre class="code-block"><code># Retorna um DataFrame com: geography, year, simplified, path
+df = geobr.list_local_datasets()
+print(df)</code></pre>
+            </div>
+            <div class="code-card compact">
+              <div class="code-card-header"><span class="code-lang-label">R</span></div>
+              <pre class="code-block"><code># Retorna um data.frame com: geography, year, simplified, path
+df &lt;- list_local_datasets()
+print(df)</code></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════ PANEL: List Datasets ════ -->
+      <section class="panel" id="panel-list">
+        <div class="panel-header">
+          <h1>Listar Datasets</h1>
+          <p class="panel-desc">Consulte todos os datasets disponíveis na API do geobr.</p>
+        </div>
+        <div class="code-card">
+          <div class="code-card-header">
+            <span class="code-lang-label">Python</span>
+            <button class="btn-copy">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              Copiar
+            </button>
+          </div>
+          <pre class="code-block"><code>import geobr
+
+# Retorna um DataFrame com todos os datasets disponíveis
+df = geobr.list_geobr()
+print(df)
+</code></pre>
+        </div>
+        <div class="code-card">
+          <div class="code-card-header">
+            <span class="code-lang-label">R</span>
+            <button class="btn-copy">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+              Copiar
+            </button>
+          </div>
+          <pre class="code-block"><code>library(geobr)
+
+# Retorna um tibble com todos os datasets disponíveis
+df <- list_geobr()
+print(df)
+</code></pre>
+        </div>
+
+        <div class="dataset-catalog">
+          <div class="catalog-header">
+            <h3>Catálogo de Datasets</h3>
+            <input type="text" id="catalog-search" class="form-input" placeholder="🔍 Buscar dataset..." style="max-width:280px" />
+          </div>
+          <div class="catalog-table-wrap">
+            <table class="catalog-table" id="catalog-table">
+              <thead>
+                <tr>
+                  <th>Dataset</th>
+                  <th>Função Python</th>
+                  <th>Função R</th>
+                  <th>Anos disponíveis</th>
+                  <th>Categoria</th>
+                </tr>
+              </thead>
+              <tbody id="catalog-tbody">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ════ PANEL: Code Generator ════ -->
+      <section class="panel" id="panel-code-gen">
+        <div class="panel-header">
+          <h1>Gerador de Código</h1>
+          <p class="panel-desc">Monte um script completo de análise com múltiplos datasets.</p>
+        </div>
+
+        <div class="codegen-grid">
+          <div class="codegen-left">
+            <h3 class="section-title">Datasets selecionados</h3>
+            <div class="codegen-dataset-picker">
+              <div class="picker-search">
+                <input type="text" id="picker-search" class="form-input" placeholder="🔍 Filtrar datasets..." />
+              </div>
+              <div class="picker-list" id="picker-list"></div>
+            </div>
+
+            <h3 class="section-title mt">Configurações globais</h3>
+            <div class="codegen-options">
+              <div class="form-group">
+                <label class="form-label">Idioma</label>
+                <div class="toggle-group">
+                  <button class="toggle-btn active" id="cg-lang-py">Python</button>
+                  <button class="toggle-btn" id="cg-lang-r">R</button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Ano padrão</label>
+                <div class="select-wrapper">
+                  <select id="cg-year" class="form-select">
+                    <option value="2022">2022</option>
+                    <option value="2020">2020</option>
+                    <option value="2019">2019</option>
+                    <option value="2010">2010</option>
+                  </select>
+                  <span class="select-arrow">▾</span>
+                </div>
+              </div>
+              <div class="checkbox-row">
+                <label class="checkbox-label"><input type="checkbox" id="cg-simplified" checked /> Geometria simplificada</label>
+                <label class="checkbox-label"><input type="checkbox" id="cg-local-db" /> Usar banco local</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="codegen-right">
+            <div class="code-card tall">
+              <div class="code-card-header">
+                <span class="code-lang-label" id="cg-lang-label">Python</span>
+                <div class="code-actions">
+                  <button class="btn-copy" id="cg-copy-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                    Copiar
+                  </button>
+                  <button class="btn-download" id="cg-download-btn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Baixar
+                  </button>
+                </div>
+              </div>
+              <pre class="code-block tall" id="cg-output"><code id="cg-code-content"># Selecione datasets à esquerda para gerar o código
+</code></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ── Toast ── -->
+  <div class="toast" id="toast"></div>
+
+  <!-- ── Dataset Config Modal ── -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal" id="modal">
+      <div class="modal-header">
+        <h2 id="modal-title">Configurar Dataset</h2>
+        <button class="modal-close" id="modal-close">✕</button>
+      </div>
+      <div class="modal-body" id="modal-body">
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="modal-cancel">Cancelar</button>
+        <button class="btn-primary" id="modal-apply">Gerar código</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+#' Download spatial data of urbanized areas in Brazil
+#'
+#' @description
+#' This function reads the official data on the urban footprint of Brazilian
+#' cities. Original data by the Brazilian Institute of Geography and Statistics
+#' (IBGE)  For more information about the methodology, see details
+#' at \url{https://biblioteca.ibge.gov.br/visualizacao/livros/liv100639.pdf}
+#'
+#' @template year
+#' @template code_muni
+#' @template simplified
+#' @template output
+#' @template showProgress
+#' @template cache
+#' @template verbose
+#'
+#' @return An `"sf" "data.frame"` OR an `ArrowObject`
+#'
+#' @export
+#'
+#' @examplesIf identical(tolower(Sys.getenv("NOT_CRAN")), "true")
+#' # Read urban footprint of Brazilian cities in an specific year
+#' d <- read_urban_area(year = 2015)
+#'
+read_urban_area <- function(year,
+                            code_muni = "all",
+                            simplified = TRUE,
+                            output = "sf",
+                            showProgress = TRUE,
+                            cache = TRUE,
+                            verbose = TRUE){
+
+  # Get metadata
+  temp_meta <- select_metadata(
+    geography="urbanareas",
+    year = year,
+    simplified = simplified,
+    verbose = verbose
+  )
+
+  # check if download failed
+  if (is.null(temp_meta)) { return(invisible(NULL)) }
+
+  # download file and open arrow dataset
+  temp_arrw <- download_parquet(
+    filename_to_download = temp_meta$file_name,
+    showProgress = showProgress,
+    cache = cache
+  )
+
+  # check if download failed
+  if (is.null(temp_arrw)) { return(invisible(NULL)) }
+
+  # FILTER
+  temp_arrw <- filter_arrw(temp_arrw, code = code_muni)
+
+  # convert to sf
+  temp <- convert_output(temp_arrw, output)
+
+  return(temp)
+
+}

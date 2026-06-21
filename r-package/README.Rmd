@@ -1,0 +1,124 @@
+---
+title: ""
+output: github_document
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "./man/figures/",
+  out.width = "100%"
+)
+```
+
+# geobr: Download Official Spatial Data Sets of Brazil 
+
+<p align="justify">geobr is a computational package to download official spatial data sets of Brazil. The package covers a wide range of spatial data sets, available at various geographic scales and for various years with harmonized attributes, projection and fixed topology (see detailed list of available data sets below). </p> 
+
+The package is currently available in **R** and **Python**.
+
+
+## Installation R
+
+```{r eval=FALSE, message=FALSE, warning=FALSE}
+# Install the development version from GitHub
+utils::remove.packages('geobr')
+remotes::install_github("yan-fab/geobr", subdir = "r-package")
+
+```
+
+obs. If you use **Linux**, you need to install a couple dependencies before installing the libraries `sf` and `geobr`. [More info here](https://github.com/r-spatial/sf#linux).
+
+
+
+## Installation Python
+```bash
+pip install git+https://github.com/yan-fab/geobr.git#subdirectory=python-package
+```
+*Windows users:*  
+
+```bash
+conda create -n geo_env
+conda activate geo_env  
+conda config --env --add channels conda-forge  
+conda config --env --set channel_priority strict  
+conda install python=3 geopandas  
+pip install git+https://github.com/yan-fab/geobr.git#subdirectory=python-package
+```
+
+# Basic Usage
+
+The syntax of all `geobr` functions operate on the same logic so it becomes intuitive to download any data set using a single line of code. Like this:
+
+## R, reading the data as an `sf` object
+```{r eval=FALSE, message=FALSE, warning=FALSE}
+library(geobr)
+
+# Read specific municipality at a given year
+mun <- read_municipality(code_muni = 1200179, year = 2022)
+
+# Read all municipalities of given state at a given year
+mun <- read_municipality(code_muni = "RJ", year = 2022) # or
+mun <- read_municipality(code_muni = 33, year = 2022)
+
+# Read all municipalities in the country at a given year
+mun <- read_municipality(code_muni="all", year = 2022)
+```
+
+## Python, reading the data as a `geopandas` object
+```python
+from geobr import read_municipality
+
+# Read specific municipality at a given year
+mun = read_municipality(code_muni=1200179, year=2017)
+
+# Read all municipalities of given state at a given year
+mun = read_municipality(code_muni=33, year=2010) # or
+mun = read_municipality(code_muni="RJ", year=2010)
+
+# Read all municipalities in the country at a given year
+mun = read_municipality(code_muni="all", year=2018)
+```
+
+# Available datasets:
+
+You can check all the data sets available with `list_geobr()`
+
+:point_right:  **All datasets use geodetic reference system "SIRGAS2000", CRS(4674).** 
+
+```{r eval=TRUE, message=FALSE, warning=FALSE, echo=FALSE}
+temp <- geobr::list_geobr() |> 
+  dplyr::rename(
+    `Geographies available` = geography,
+    `Years available` = year,
+    Source = source
+    )
+
+knitr::kable(temp, format = "pipe")
+```
+
+
+## Other support functions:
+
+| Function | Action|
+|-----|-----|
+| `list_geobr` | List all datasets available in the geobr package |
+| `lookup_muni` | Look up municipality codes by their name, or the other way around |
+| `remove_islands` | Removes distant oceanic islands from Brazil |
+| `grid_state_correspondence_table` | Loads a correspondence table indicating what quadrants of IBGE's statistical grid intersect with each state |
+| `cep_to_state` | Determine the state of a given CEP postal code |
+| ... | ... |
+
+Note 1. Data sets and Functions marked with "dev" are only available in the development version of `geobr`.
+
+Note 2. Most data sets are available at scale 1:250,000 (see documentation for details).
+
+-----
+
+# Credits
+
+Original shapefiles are created by official government institutions. The **geobr** 
+package is maintained by yanju. If you want to cite this package, you can cite it as:
+
+* yanju (2026) **geobr: Download Official Spatial Data Sets of Brazil**. v2.0.0 GitHub repository.

@@ -1,0 +1,55 @@
+on:
+  push:
+    paths:
+      - python-package/**
+      - .github/workflows/Python-CMD-check.yaml
+    branches:
+      - main
+      - master
+      - dev
+  pull_request:
+    paths:
+      - python-package/**
+      - .github/workflows/Python-CMD-check.yaml
+    branches:
+      - main
+      - master
+      - dev
+
+name: Python-CMD-check
+
+jobs:
+  Python-CMD-check:
+    runs-on: ${{ matrix.os }}
+
+    name: ${{ matrix.os }} (${{ matrix.python-version }}${{ matrix.extras != '' && format(', {0}', matrix.extras) || '' }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macOS-latest, windows-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - name: Check out geobr
+        uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        shell: bash
+        working-directory: python-package
+        run: uv sync --frozen
+
+      - name: Run tests
+        shell: bash
+        working-directory: python-package
+        run: uv run pytest -n 2 --durations=10 -s ./tests -m "not network"
