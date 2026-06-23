@@ -142,3 +142,25 @@ Original shapefiles are created by official government institutions. The
 can cite it as:
 
 - yanju (2026) **GEOfinder: Download Official Spatial Data Sets of Brazil**. v2.0.0 GitHub repository.
+
+# geoBR Explorer - Layer Builder & Web Viewer
+
+This repository now includes **geoBR Explorer**, an interactive web application that allows you to easily discover, build, and visualize spatial datasets right from your browser.
+
+## Features:
+- **Interactive Map Viewer (WebAssembly):** View and explore generated GeoPackage (`.gpkg`) files locally entirely within your browser using an embedded Leaflet map and SQL.js, without needing to upload your data to any external server.
+- **Native geoBR Integration:** Visually construct datasets from the official IPEA `geobr` Python package, including geometries for the Country, Regions, States, Biomes, Legal Amazon, Health Regions, and Urban Areas.
+- **External API Catalog:** Search and extract spatial layers from external catalogs with over 15,000 combined datasets:
+  - **GeoSampa (WFS):** +400 spatial layers of the city of São Paulo.
+  - **INDE Brasileiro:** National spatial data infrastructure catalog.
+  - **IBGE Mapas:** Spatial data service from the Brazilian Institute of Geography and Statistics.
+- **Data Customization:** The robust Python builder engine automatically projects the data correctly, supports CRS manipulation (e.g., EPSG:31983, EPSG:4674 to standard EPSG:4326), and saves in GeoPackage, GeoJSON, or Shapefile.
+
+## Running the Explorer
+Run the application locally via the included batch script (Windows) or manually start the Python background servers:
+
+```bash
+# To start the API and Web interface
+.\INICIAR.bat
+```
+Then navigate to `http://localhost:8080` in your web browser.

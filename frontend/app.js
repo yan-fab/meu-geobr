@@ -592,6 +592,7 @@ let lbApiOnline = false;
 const CAT_COLORS = {
   migracao:'#22d3ee', assistencia:'#818cf8', economia:'#fbbf24',
   censo:'#a78bfa', transporte:'#34d399', base:'#94a3b8',
+  geosampa:'#f472b6', geosampa_cruzamentos:'#fdba74', geobr:'#10b981'
 };
 
 function hexToRgb(hex) {
@@ -634,19 +635,35 @@ async function lbLoadExternalLayers() {
     const r = await fetch(`${API_BASE}/external-layers`);
     const data = await r.json();
     lbExternalLayersData = data.layers || [];
-    
-    const datalist = document.getElementById('lb-external-datalist');
-    if (datalist) {
-        datalist.innerHTML = '';
-        lbExternalLayersData.forEach(layer => {
-            const option = document.createElement('option');
-            option.value = layer.label;
-            datalist.appendChild(option);
-        });
-    }
+    lbUpdateExternalDatalist();
   } catch (e) {
     console.error("Erro ao carregar camadas externas", e);
   }
+}
+
+function lbUpdateExternalDatalist(dbId) {
+  if (!dbId) {
+    const activeEl = document.querySelector('.api-db-selector.active');
+    dbId = activeEl ? activeEl.dataset.db : 'geosampa';
+  }
+  const datalist = document.getElementById('lb-external-datalist');
+  if (!datalist) return;
+  
+  datalist.innerHTML = '';
+  document.getElementById('lb-external-search').value = ''; // clear input
+  
+  const filteredLayers = lbExternalLayersData.filter(layer => {
+    if (dbId === 'geosampa') return layer.id.startsWith('geosampa:');
+    if (dbId === 'inde') return layer.id.startsWith('inde:');
+    if (dbId === 'ibge') return layer.id.startsWith('ibge:');
+    return false;
+  });
+  
+  filteredLayers.forEach(layer => {
+      const option = document.createElement('option');
+      option.value = layer.label;
+      datalist.appendChild(option);
+  });
 }
 
 // Logic to add an external layer to the queue
@@ -849,7 +866,13 @@ function lbRenderOutputs() {
   }
   
   const extC = { gpkg:'#22d3ee', geojson:'#fbbf24', shp:'#a78bfa' };
-  tbody.innerHTML = files.map(f => `<tr><td><strong>${f.name}</strong></td><td><span style="font-family:monospace;color:${extC[f.ext]||'#94a3b8'};font-size:.8rem">.${f.ext}</span></td><td style="color:var(--text-secondary)">${f.size_mb} MB</td><td style="color:var(--text-muted);font-size:.8rem">${new Date(f.modified).toLocaleString('pt-BR')}</td><td><a href="${API_BASE}/download/${f.name}" class="btn-icon" download style="text-decoration:none;font-size:.75rem">Download</a></td></tr>`).join('');
+  tbody.innerHTML = files.map(f => {
+    let actions = `<a href="${API_BASE}/download/${f.name}" class="btn-icon" download style="text-decoration:none;font-size:.75rem">Download</a>`;
+    if (f.ext === 'gpkg') {
+      actions += `<button class="btn-icon btn-view-gpkg" data-file="${f.name}" style="margin-left:8px;font-size:.75rem;color:var(--accent-cyan);border-color:var(--accent-cyan);">🗺️ Visualizar</button>`;
+    }
+    return `<tr><td><strong>${f.name}</strong></td><td><span style="font-family:monospace;color:${extC[f.ext]||'#94a3b8'};font-size:.8rem">.${f.ext}</span></td><td style="color:var(--text-secondary)">${f.size_mb} MB</td><td style="color:var(--text-muted);font-size:.8rem">${new Date(f.modified).toLocaleString('pt-BR')}</td><td>${actions}</td></tr>`;
+  }).join('');
 }
 
 document.querySelectorAll('#lb-files-table th[data-sort]').forEach(th => {
@@ -878,9 +901,232 @@ document.getElementById('lb-refresh-outputs').addEventListener('click', () => {
 document.getElementById('lb-check-api').addEventListener('click', lbCheckApi);
 
 document.querySelectorAll('.nav-item').forEach(btn => {
-  btn.addEventListener('click', () => { if (btn.dataset.panel === 'layer-builder') setTimeout(lbCheckApi, 80); });
+  btn.addEventListener('click', () => { 
+    if (btn.dataset.panel === 'layer-builder') {
+      setTimeout(lbCheckApi, 80);
+      if (!viewerMap) initViewerMap();
+      setTimeout(() => { if (viewerMap) viewerMap.invalidateSize(); }, 300);
+    }
+  });
 });
 
 const _lbStyle = document.createElement('style');
 _lbStyle.textContent = '@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}';
 document.head.appendChild(_lbStyle);
+
+// --- 🗺️ Web Viewer Logic ---
+
+let viewerMap;
+let viewerActiveLayers = [];
+
+// Configuração global crucial para o SQL.js encontrar o WebAssembly fora da raiz local
+const wasmPath = 'https://unpkg.com/@ngageoint/geopackage@4.2.1/dist/';
+window.config = { locateFile: filename => wasmPath + filename };
+if (window.GeoPackage && window.GeoPackage.setSqljsWasmLocateFile) {
+  window.GeoPackage.setSqljsWasmLocateFile(filename => wasmPath + filename);
+}
+
+function initViewerMap() {
+  if (viewerMap) return;
+  viewerMap = L.map('viewer-map').setView([-14.235, -51.925], 4);
+  viewerMap.createPane('baseMapPane');
+  viewerMap.getPane('baseMapPane').style.zIndex = 200;
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap contributors, © CARTO',
+    pane: 'baseMapPane'
+  }).addTo(viewerMap);
+}
+
+function getRandomColor() {
+  const letters = '0123456789ABCDEF';
+  let color = '#';
+  for (let i = 0; i < 6; i++) { color += letters[Math.floor(Math.random() * 16)]; }
+  return color;
+}
+
+function updateViewerZIndexes() {
+  viewerActiveLayers.forEach((item, index) => {
+    const pane = viewerMap.getPane(item.paneName);
+    if (pane) pane.style.zIndex = 400 + index;
+  });
+}
+
+function renderViewerLayerManager() {
+  const container = document.getElementById('viewer-layer-manager');
+  container.innerHTML = '';
+  if (!viewerActiveLayers.length) {
+    container.innerHTML = '<div style="font-size:.8rem;color:var(--text-muted)">Nenhuma camada ativa no mapa.</div>';
+    return;
+  }
+
+  [...viewerActiveLayers].reverse().forEach((item) => {
+    const actualIndex = viewerActiveLayers.indexOf(item);
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:8px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:4px;';
+    
+    const left = document.createElement('div');
+    left.style.cssText = 'display:flex;align-items:center;gap:8px;overflow:hidden;flex:1;';
+    
+    const chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.checked = item.visible;
+    chk.onchange = () => {
+      item.visible = chk.checked;
+      if (item.visible) viewerMap.addLayer(item.leafletLayer);
+      else viewerMap.removeLayer(item.leafletLayer);
+    };
+
+    const label = document.createElement('label');
+    label.style.cssText = 'font-size:.8rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;flex:1;';
+    label.innerHTML = `<span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:${item.color};margin-right:6px;vertical-align:middle;"></span>${item.name}`;
+    
+    left.appendChild(chk);
+    left.appendChild(label);
+
+    const ctrls = document.createElement('div');
+    ctrls.style.cssText = 'display:flex;gap:4px;';
+    
+    const btnUp = document.createElement('button');
+    btnUp.innerHTML = '⬆️';
+    btnUp.style.cssText = 'background:var(--bg-elevated);border:1px solid var(--border-color);cursor:pointer;font-size:.7rem;padding:2px 4px;border-radius:2px;color:var(--text-primary);';
+    btnUp.onclick = () => {
+      if (actualIndex < viewerActiveLayers.length - 1) {
+        const temp = viewerActiveLayers[actualIndex + 1];
+        viewerActiveLayers[actualIndex + 1] = viewerActiveLayers[actualIndex];
+        viewerActiveLayers[actualIndex] = temp;
+        updateViewerZIndexes();
+        renderViewerLayerManager();
+      }
+    };
+
+    const btnDown = document.createElement('button');
+    btnDown.innerHTML = '⬇️';
+    btnDown.style.cssText = 'background:var(--bg-elevated);border:1px solid var(--border-color);cursor:pointer;font-size:.7rem;padding:2px 4px;border-radius:2px;color:var(--text-primary);';
+    btnDown.onclick = () => {
+      if (actualIndex > 0) {
+        const temp = viewerActiveLayers[actualIndex - 1];
+        viewerActiveLayers[actualIndex - 1] = viewerActiveLayers[actualIndex];
+        viewerActiveLayers[actualIndex] = temp;
+        updateViewerZIndexes();
+        renderViewerLayerManager();
+      }
+    };
+    
+    const btnDel = document.createElement('button');
+    btnDel.innerHTML = '✕';
+    btnDel.style.cssText = 'background:var(--bg-elevated);border:1px solid var(--border-color);cursor:pointer;font-size:.7rem;padding:2px 4px;border-radius:2px;color:var(--accent-red);';
+    btnDel.onclick = () => {
+      viewerMap.removeLayer(item.leafletLayer);
+      viewerActiveLayers.splice(actualIndex, 1);
+      updateViewerZIndexes();
+      renderViewerLayerManager();
+    };
+
+    ctrls.appendChild(btnUp);
+    ctrls.appendChild(btnDown);
+    ctrls.appendChild(btnDel);
+
+    div.appendChild(left);
+    div.appendChild(ctrls);
+    container.appendChild(div);
+  });
+}
+
+async function loadGpkgToViewer(fileName, arrayBuffer) {
+  initViewerMap();
+  try {
+    const uint8Array = new Uint8Array(arrayBuffer);
+    const geoPackage = await window.GeoPackage.GeoPackageAPI.open(uint8Array);
+    const featureTables = geoPackage.getFeatureTables();
+    if (featureTables.length === 0) {
+      alert("GeoPackage vazio ou sem vetores.");
+      return;
+    }
+
+    const layerName = featureTables[0];
+    const randomColor = getRandomColor();
+    const blob = new Blob([uint8Array], { type: 'application/octet-stream' });
+    const objectUrl = URL.createObjectURL(blob);
+
+    const paneName = 'pane-' + Date.now();
+    viewerMap.createPane(paneName);
+
+    const newLayer = L.geoPackageFeatureLayer([], {
+      geoPackageUrl: objectUrl,
+      layerName: layerName,
+      pane: paneName,
+      style: { color: "#333", weight: 1, opacity: 1, fillColor: randomColor, fillOpacity: 0.6 },
+      onEachFeature: function (feature, layer) {
+        let popupContent = `<div style='max-height:250px;overflow-y:auto;font-family:sans-serif;color:#333;font-size:.8rem;'>`;
+        popupContent += `<h4 style='margin-top:0;border-bottom:1px solid #ccc;padding-bottom:5px;font-size:.9rem;'>${layerName}</h4>`;
+        for (let key in feature.properties) {
+          popupContent += `<b>${key}</b>: ${feature.properties[key]}<br>`;
+        }
+        popupContent += `</div>`;
+        layer.bindPopup(popupContent);
+      }
+    });
+
+    newLayer.addTo(viewerMap);
+    viewerActiveLayers.push({
+      id: Date.now(),
+      name: fileName,
+      color: randomColor,
+      leafletLayer: newLayer,
+      paneName: paneName,
+      visible: true
+    });
+
+    updateViewerZIndexes();
+    renderViewerLayerManager();
+    
+    if (viewerActiveLayers.length === 1) {
+       viewerMap.setView([-14.235, -51.925], 5);
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Erro ao ler GeoPackage.");
+  }
+}
+
+document.getElementById('viewer-file-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const buffer = await file.arrayBuffer();
+  await loadGpkgToViewer(file.name, buffer);
+  e.target.value = '';
+});
+
+document.getElementById('lb-files-tbody').addEventListener('click', async (e) => {
+  if (e.target.classList.contains('btn-view-gpkg')) {
+    e.preventDefault();
+    const fileName = e.target.dataset.file;
+    try {
+      const resp = await fetch(`${API_BASE}/download/${fileName}`);
+      if (!resp.ok) throw new Error("Erro no download");
+      const buffer = await resp.arrayBuffer();
+      await loadGpkgToViewer(fileName, buffer);
+      document.getElementById('viewer-map').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (err) {
+      console.error(err);
+      alert("Falha ao baixar arquivo para visualização.");
+    }
+  }
+});
+
+// --- 🌐 Catálogo de APIs Externas (DB Selector) ---
+document.querySelectorAll('.api-db-selector').forEach(selector => {
+  selector.addEventListener('click', () => {
+    document.querySelectorAll('.api-db-selector').forEach(el => el.classList.remove('active'));
+    selector.classList.add('active');
+    const dbName = selector.querySelector('span').textContent;
+    document.getElementById('lb-external-search').placeholder = `🔍 Buscar em ${dbName}...`;
+    document.getElementById('lb-external-results').innerHTML = `Digite o nome da camada (ex: zoneamento, ciclovia) na barra acima para pesquisar em <b>${dbName}</b>.`;
+    
+    // Atualiza a datalist com base no banco de dados ativo
+    if (typeof lbUpdateExternalDatalist === 'function') {
+      lbUpdateExternalDatalist(selector.dataset.db);
+    }
+  });
+});
