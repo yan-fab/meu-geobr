@@ -592,7 +592,8 @@ let lbApiOnline = false;
 const CAT_COLORS = {
   migracao:'#22d3ee', assistencia:'#818cf8', economia:'#fbbf24',
   censo:'#a78bfa', transporte:'#34d399', base:'#94a3b8',
-  geosampa:'#f472b6', geosampa_cruzamentos:'#fdba74', geobr:'#10b981'
+  geosampa:'#f472b6', geosampa_cruzamentos:'#fdba74', geobr:'#10b981',
+  favelas:'#ec4899'
 };
 
 function hexToRgb(hex) {
@@ -641,105 +642,223 @@ async function lbLoadExternalLayers() {
   }
 }
 
-function lbUpdateExternalDatalist(dbId) {
+async function lbUpdateExternalDatalist(dbId) {
   if (!dbId) {
     const activeEl = document.querySelector('.api-db-selector.active');
     dbId = activeEl ? activeEl.dataset.db : 'geosampa';
   }
   const datalist = document.getElementById('lb-external-datalist');
-  if (!datalist) return;
+  const resultsDiv = document.getElementById('lb-external-results');
+  if (!datalist || !resultsDiv) return;
   
   datalist.innerHTML = '';
-  document.getElementById('lb-external-search').value = ''; // clear input
+  document.getElementById('lb-external-search').value = '';
   
   const searchInput = document.getElementById('lb-external-search');
   if (dbId === 'geosampa') searchInput.placeholder = "🔍 Buscar no GeoSampa (WFS)...";
   else if (dbId === 'inde') searchInput.placeholder = "🔍 Buscar no INDE Brasileiro...";
   else if (dbId === 'ibge') searchInput.placeholder = "🔍 Buscar no IBGE Mapas...";
   else if (dbId === 'geonetwork') searchInput.placeholder = "🔍 Digite para buscar no catálogo SP (ex: saude, escola)...";
+  else if (dbId === 'favelas') searchInput.placeholder = "🔍 Buscar favelas e projetos da UFABC...";
 
-  const filteredLayers = lbExternalLayersData.filter(layer => {
-    if (dbId === 'geosampa') return layer.id.startsWith('geosampa:');
-    if (dbId === 'inde') return layer.id.startsWith('inde:');
-    if (dbId === 'ibge') return layer.id.startsWith('ibge:');
-    return false;
-  });
-  
-  const maxOptions = 500;
-  const limitedLayers = filteredLayers.slice(0, maxOptions);
-  
-  limitedLayers.forEach(layer => {
+  resultsDiv.innerHTML = '<div style="width:100%;text-align:center;color:var(--text-muted);font-size:.8rem;padding:20px;">Carregando pré-visualizações...</div>';
+  resultsDiv.style.display = 'flex';
+  resultsDiv.style.alignItems = 'center';
+  resultsDiv.style.justifyContent = 'center';
+
+  let displayLayers = [];
+
+  if (dbId === 'geosampa' || dbId === 'inde' || dbId === 'ibge') {
+      displayLayers = lbExternalLayersData.filter(layer => layer.id.startsWith(dbId + ':'));
+  } else if (dbId === 'favelas') {
+      try {
+          const r = await fetch(`http://localhost:5001/api/favelas/all`);
+          const data = await r.json();
+          lbFavelasCache = [];
+          (data.data || []).forEach(m => {
+              let title = m.title || 'Favela Sem Nome';
+              if (title.toLowerCase() === 'desconhecido' && m.organization) {
+                  title = m.organization.substring(0, 60);
+              }
+              const id = `favelas:${title.replace(/[\s\/\\]+/g, '_').toLowerCase()}`;
+              const label = `[Favela] ${title}`;
+              lbFavelasCache.push({ id, label, category: 'favelas', fullData: m });
+          });
+          displayLayers = lbFavelasCache;
+      } catch(e) { console.error(e); }
+  } else if (dbId === 'geonetwork') {
+      try {
+          // Busca inicial padrão para geonetwork (ex: saude ou limites)
+          const r = await fetch(`http://localhost:5050/api/catalog/search?q=saude`);
+          const data = await r.json();
+          lbGeonetworkCache = [];
+          (data.metadata || []).forEach(m => {
+              const title = m.title;
+              let layerName = null;
+              const links = Array.isArray(m.link) ? m.link : (m.link ? [m.link] : []);
+              for (const link of links) {
+                  if (typeof link === 'string' && link.toLowerCase().includes('wfs') && link.toLowerCase().includes('geoportal:')) {
+                      const match = link.match(/geoportal:[a-zA-Z0-9_]+/);
+                      if (match) { layerName = match[0]; break; }
+                  }
+              }
+              if (!layerName) {
+                  const keywords = Array.isArray(m.keyword) ? m.keyword : (m.keyword ? [m.keyword] : []);
+                  for (const kw of keywords) {
+                      if (typeof kw === 'string' && (kw.includes('geoportal:') || kw.includes('layer_') || kw.includes('v_'))) {
+                          const match = kw.match(/(geoportal:)?[a-zA-Z0-9_]+/);
+                          if (match) {
+                              layerName = match[0];
+                              if (!layerName.includes('geoportal:')) layerName = `geoportal:${layerName}`;
+                              break;
+                          }
+                      }
+                  }
+              }
+              if (layerName) {
+                  const id = layerName.replace('geoportal:', '').trim();
+                  lbGeonetworkCache.push({ id: id, label: `${title} (WFS)`, category: 'geonetwork' });
+              }
+          });
+          displayLayers = lbGeonetworkCache;
+      } catch(e) { console.error(e); }
+  }
+
+  // Popula o datalist
+  displayLayers.slice(0, 500).forEach(layer => {
       const option = document.createElement('option');
       option.value = layer.label;
       datalist.appendChild(option);
   });
+
+  // Renderiza previews no resultsDiv
+  if (displayLayers.length === 0) {
+      resultsDiv.innerHTML = `<div style="width:100%;text-align:center;color:var(--text-muted);font-size:.8rem;padding:20px;">Digite o nome da camada na barra acima para pesquisar em <b>${dbId}</b>.</div>`;
+      return;
+  }
+
+  resultsDiv.innerHTML = '';
+  resultsDiv.style.display = 'grid';
+  resultsDiv.style.gridTemplateColumns = 'repeat(auto-fill, minmax(220px, 1fr))';
+  resultsDiv.style.gap = '8px';
+  resultsDiv.style.alignContent = 'start';
+  resultsDiv.style.alignItems = 'start';
+  resultsDiv.style.maxHeight = '280px';
+  resultsDiv.style.overflowY = 'auto';
+
+  // Mostrar até 60 preview cards
+  displayLayers.slice(0, 60).forEach(layer => {
+      const card = document.createElement('div');
+      card.style.cssText = 'padding:10px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:6px;cursor:pointer;transition:0.2s;font-size:0.8rem;color:var(--text-primary);display:flex;flex-direction:column;gap:4px;';
+      card.innerHTML = `<strong style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${layer.label}">${layer.label}</strong><span style="font-size:0.7rem;color:var(--accent-cyan);">+ Adicionar à fila</span>`;
+      card.onmouseover = () => { card.style.borderColor = 'var(--accent-cyan)'; card.style.background = 'var(--bg-elevated)'; };
+      card.onmouseout = () => { card.style.borderColor = 'var(--border-color)'; card.style.background = 'var(--bg-card)'; };
+      card.onclick = () => {
+          document.getElementById('lb-external-search').value = layer.label;
+          document.getElementById('lb-external-add-btn').click();
+      };
+      resultsDiv.appendChild(card);
+  });
 }
 
-// GeoNetwork state
+// GeoNetwork & Favelas state
 let lbGeonetworkTimeout = null;
 let lbGeonetworkCache = [];
+let lbFavelasTimeout = null;
+let lbFavelasCache = [];
 
 document.getElementById('lb-external-search')?.addEventListener('input', (e) => {
     const activeEl = document.querySelector('.api-db-selector.active');
     const dbId = activeEl ? activeEl.dataset.db : 'geosampa';
     
-    if (dbId !== 'geonetwork') return;
+    if (dbId !== 'geonetwork' && dbId !== 'favelas') return;
     
     const val = e.target.value;
     if (val.length < 3) return;
     
-    clearTimeout(lbGeonetworkTimeout);
-    lbGeonetworkTimeout = setTimeout(async () => {
-        try {
-            const r = await fetch(`${API_BASE}/catalog/search?q=${encodeURIComponent(val)}`);
-            const data = await r.json();
-            const records = data.metadata || [];
-            
-            lbGeonetworkCache = [];
-            const datalist = document.getElementById('lb-external-datalist');
-            datalist.innerHTML = '';
-            
-            records.forEach(m => {
-                const title = m.title;
-                let layerName = null;
-                const links = Array.isArray(m.link) ? m.link : (m.link ? [m.link] : []);
-                for (const link of links) {
-                    if (typeof link === 'string' && link.toLowerCase().includes('wfs') && link.toLowerCase().includes('geoportal:')) {
-                        const match = link.match(/geoportal:[a-zA-Z0-9_]+/);
-                        if (match) { layerName = match[0]; break; }
+    if (dbId === 'geonetwork') {
+        clearTimeout(lbGeonetworkTimeout);
+        lbGeonetworkTimeout = setTimeout(async () => {
+            try {
+                const r = await fetch(`${API_BASE}/catalog/search?q=${encodeURIComponent(val)}`);
+                const data = await r.json();
+                const records = data.metadata || [];
+                
+                lbGeonetworkCache = [];
+                const datalist = document.getElementById('lb-external-datalist');
+                datalist.innerHTML = '';
+                
+                records.forEach(m => {
+                    const title = m.title;
+                    let layerName = null;
+                    const links = Array.isArray(m.link) ? m.link : (m.link ? [m.link] : []);
+                    for (const link of links) {
+                        if (typeof link === 'string' && link.toLowerCase().includes('wfs') && link.toLowerCase().includes('geoportal:')) {
+                            const match = link.match(/geoportal:[a-zA-Z0-9_]+/);
+                            if (match) { layerName = match[0]; break; }
+                        }
                     }
-                }
-                if (!layerName) {
-                    const keywords = Array.isArray(m.keyword) ? m.keyword : (m.keyword ? [m.keyword] : []);
-                    for (const kw of keywords) {
-                        if (typeof kw === 'string' && (kw.includes('geoportal:') || kw.includes('layer_') || kw.includes('v_'))) {
-                            const match = kw.match(/(geoportal:)?[a-zA-Z0-9_]+/);
-                            if (match) {
-                                layerName = match[0];
-                                if (!layerName.includes('geoportal:')) layerName = `geoportal:${layerName}`;
-                                break;
+                    if (!layerName) {
+                        const keywords = Array.isArray(m.keyword) ? m.keyword : (m.keyword ? [m.keyword] : []);
+                        for (const kw of keywords) {
+                            if (typeof kw === 'string' && (kw.includes('geoportal:') || kw.includes('layer_') || kw.includes('v_'))) {
+                                const match = kw.match(/(geoportal:)?[a-zA-Z0-9_]+/);
+                                if (match) {
+                                    layerName = match[0];
+                                    if (!layerName.includes('geoportal:')) layerName = `geoportal:${layerName}`;
+                                    break;
+                                }
                             }
                         }
                     }
-                }
+                    
+                    if (layerName) {
+                        const id = layerName.replace('geoportal:', '').trim();
+                        lbGeonetworkCache.push({
+                            id: id,
+                            label: `${title} (WFS)`,
+                            category: 'geonetwork'
+                        });
+                        const option = document.createElement('option');
+                        option.value = `${title} (WFS)`;
+                        datalist.appendChild(option);
+                    }
+                });
                 
-                if (layerName) {
-                    const id = layerName.replace('geoportal:', '').trim();
-                    lbGeonetworkCache.push({
-                        id: id,
-                        label: `${title} (WFS)`,
-                        category: 'geonetwork'
-                    });
+            } catch (err) {
+                console.error("Erro na busca GeoNetwork", err);
+            }
+        }, 500);
+    } else if (dbId === 'favelas') {
+        clearTimeout(lbFavelasTimeout);
+        lbFavelasTimeout = setTimeout(async () => {
+            try {
+                const r = await fetch(`http://localhost:5001/api/favelas/search?q=${encodeURIComponent(val)}`);
+                const data = await r.json();
+                const records = data.data || [];
+                
+                lbFavelasCache = [];
+                const datalist = document.getElementById('lb-external-datalist');
+                datalist.innerHTML = '';
+                
+                records.forEach(m => {
+                    let title = m.title || 'Favela Sem Nome';
+                    if (title.toLowerCase() === 'desconhecido' && m.organization) {
+                        title = m.organization.substring(0, 60);
+                    }
+                    const id = `favelas:${title.replace(/[\s\/\\]+/g, '_').toLowerCase()}`;
+                    const label = `[Favela] ${title}`;
+                    
+                    lbFavelasCache.push({ id, label, category: 'favelas', fullData: m });
                     const option = document.createElement('option');
-                    option.value = `${title} (WFS)`;
+                    option.value = label;
                     datalist.appendChild(option);
-                }
-            });
-            
-        } catch (err) {
-            console.error("Erro na busca GeoNetwork", err);
-        }
-    }, 500);
+                });
+            } catch (err) {
+                console.error("Erro na busca Favela API", err);
+            }
+        }, 500);
+    }
 });
 
 // Logic to add an external layer to the queue
@@ -752,7 +871,7 @@ document.getElementById('lb-external-add-btn')?.addEventListener('click', () => 
     const dbId = activeEl ? activeEl.dataset.db : 'geosampa';
     
     // Find layer by label
-    const sourceData = dbId === 'geonetwork' ? lbGeonetworkCache : lbExternalLayersData;
+    const sourceData = dbId === 'geonetwork' ? lbGeonetworkCache : (dbId === 'favelas' ? lbFavelasCache : lbExternalLayersData);
     const layer = sourceData.find(l => l.label === val);
     
     if (!layer) {
